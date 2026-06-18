@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <title>ArinDrive</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.min.css">
 
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -375,86 +376,102 @@
         </div>
 
         <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-    <h2 class="text-xl font-bold mb-4">Daftar File</h2>
+            <h2 class="text-xl font-bold mb-4">Daftar File</h2>
 
-    <div class="overflow-x-auto">
-        <table class="w-full border border-slate-200 text-sm">
-            <thead class="bg-slate-100">
-                <tr>
-                    <th class="p-3 text-left border">Nama File</th>
-                    <th class="p-3 text-left border">Aplikasi</th>
-                    <th class="p-3 text-left border">Folder</th>
-                    <th class="p-3 text-left border">Reference</th>
-                    <th class="p-3 text-left border">Ukuran</th>
-                    <th class="p-3 text-left border">Grup</th>
-                    <th class="p-3 text-left border">Akun Drive</th>
-                    <th class="p-3 text-left border">Link</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($files as $file)
-                    <tr class="hover:bg-slate-50">
-                        <td class="p-3 border font-medium">
-                            {{ $file->name }}
-                            <div class="text-xs text-slate-400">
-                                {{ $file->original_name ?? '-' }}
-                            </div>
-                        </td>
+            <div class="overflow-x-auto">
+              
+                <table id="filesTable" class="w-full border border-slate-200 text-sm">
+                    <thead class="bg-slate-100">
+                        <tr>
+                            <th class="p-3 text-left border">Nama File</th>
+                            <th class="p-3 text-left border">Aplikasi</th>
+                            <th class="p-3 text-left border">Folder</th>
+                            <th class="p-3 text-left border">Reference</th>
+                            <th class="p-3 text-left border">Ukuran</th>
+                            <th class="p-3 text-left border">Grup</th>
+                            <th class="p-3 text-left border">Akun Drive</th>
+                            <th class="p-3 text-left border">Link</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($files as $file)
+                            <tr>
+                                <td class="p-3 border font-medium">
+                                    {{ $file->name }}
+                                    <div class="text-xs text-slate-400">
+                                        {{ $file->original_name ?? '-' }}
+                                    </div>
+                                </td>
 
-                        <td class="p-3 border">
-                            {{ strtoupper($file->source_app ?? '-') }}
-                        </td>
+                                <td class="p-3 border">
+                                    {{ strtoupper($file->source_app ?? '-') }}
+                                </td>
 
-                        <td class="p-3 border">
-                            {{ $file->folder ?? '-' }}
-                        </td>
+                                <td class="p-3 border">
+                                    {{ $file->folder ?? '-' }}
+                                </td>
 
-                        <td class="p-3 border text-xs">
-                            {{ $file->reference_id ?? '-' }}
-                        </td>
+                                <td class="p-3 border text-xs">
+                                    {{ $file->reference_id ?? '-' }}
+                                </td>
 
-                        <td class="p-3 border">
-                            {{ number_format($file->size / 1024 / 1024, 2) }} MB
-                        </td>
+                                <td class="p-3 border">
+                                    {{ number_format($file->size / 1024 / 1024, 2) }} MB
+                                </td>
 
-                        <td class="p-3 border">
-                            {{ $file->driveAccount?->group?->name ?? '-' }}
-                        </td>
+                                <td class="p-3 border">
+                                    {{ $file->driveAccount?->group?->name ?? '-' }}
+                                </td>
 
-                        <td class="p-3 border">
-                            {{ $file->driveAccount?->email ?? '-' }}
-                        </td>
+                                <td class="p-3 border">
+                                    {{ $file->driveAccount?->email ?? '-' }}
+                                </td>
 
-                        <td class="p-3 border">
-                            @if($file->file_uid)
-                                <a href="{{ route('files.show', $file->file_uid) }}"
-                                    target="_blank"
-                                    class="text-blue-600 hover:underline">
-                                    Buka
-                                </a>
-                            @else
-                                -
-                            @endif
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="8" class="p-5 text-center text-slate-500">
-                            Belum ada file diupload.
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
+                                <td class="p-3 border">
+                                    @if ($file->file_uid)
+                                        <a href="{{ route('files.show', $file->file_uid) }}" target="_blank"
+                                            class="text-blue-600 hover:underline">
+                                            Buka
+                                        </a>
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
 
-    <div class="mt-5">
-        {{ $files->links() }}
-    </div>
-</div>
+        </div>
 
     </div>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>
 
+<script>
+    $(document).ready(function () {
+        $('#filesTable').DataTable({
+            pageLength: 10,
+            lengthMenu: [10, 25, 50, 100],
+            order: [],
+            language: {
+                search: "Cari:",
+                lengthMenu: "Tampilkan _MENU_ data",
+                info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+                infoEmpty: "Tidak ada data",
+                infoFiltered: "(difilter dari _MAX_ total data)",
+                zeroRecords: "Data tidak ditemukan",
+                paginate: {
+                    first: "Pertama",
+                    last: "Terakhir",
+                    next: "Berikutnya",
+                    previous: "Sebelumnya"
+                }
+            }
+        });
+    });
+</script>
 </body>
 
 </html>

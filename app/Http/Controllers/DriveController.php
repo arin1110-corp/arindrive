@@ -25,9 +25,7 @@ class DriveController extends Controller
                 ->latest()
                 ->get(),
 
-            'files' => \App\Models\DriveFile::with('driveAccount.group')
-                ->latest()
-                ->paginate(10),
+            'files' => DriveFile::with('driveAccount.group')->latest()->get(),
 
             'apiClients' => \App\Models\ApiClient::latest()->get(),
         ]);
