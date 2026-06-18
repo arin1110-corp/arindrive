@@ -10,8 +10,12 @@ class DriveFile extends Model
         'drive_account_id',
         'google_file_id',
         'name',
+        'original_name',
         'mime_type',
         'size',
+        'source_app',
+        'folder',
+        'reference_id',
     ];
 
     public function driveAccount()

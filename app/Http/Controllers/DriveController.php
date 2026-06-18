@@ -16,9 +16,10 @@ class DriveController extends Controller
     public function index()
     {
         return view('dashboard', [
-            'groups' => DriveGroup::with('accounts')->where('is_active', true)->orderBy('name')->get(),
-            'accounts' => DriveAccount::with('group')->latest()->get(),
-            'files' => DriveFile::with('driveAccount.group')->latest()->get(),
+            'groups' => \App\Models\DriveGroup::with('accounts')->where('is_active', true)->orderBy('name')->get(),
+            'accounts' => \App\Models\DriveAccount::with('group')->latest()->get(),
+            'files' => \App\Models\DriveFile::with('driveAccount.group')->latest()->get(),
+            'apiClients' => \App\Models\ApiClient::latest()->get(),
         ]);
     }
 
@@ -42,10 +43,7 @@ class DriveController extends Controller
 
         $uploaded = $request->file('file');
 
-        $account = $allocator->selectDrive(
-            $uploaded->getSize(),
-            $request->drive_group_slug
-        );
+        $account = $allocator->selectDrive($uploaded->getSize(), $request->drive_group_slug);
 
         if (!$account) {
             return back()->with('error', 'Tidak ada akun Google Drive pada grup ini yang memiliki storage cukup.');
@@ -82,6 +80,31 @@ class DriveController extends Controller
 
         $google->syncStorage($account);
 
-        return redirect()->route('dashboard')->with('success', 'File berhasil diupload ke grup ' . $account->group?->name . ' melalui akun: ' . $account->email);
+        return redirect()
+            ->route('dashboard')
+            ->with('success', 'File berhasil diupload ke grup ' . $account->group?->name . ' melalui akun: ' . $account->email);
+    }
+    public function deleteAccount($id)
+    {
+        $account = \App\Models\DriveAccount::findOrFail($id);
+
+        if ($account->files()->count() > 0) {
+            return back()->with('error', 'Akun masih memiliki metadata file. Nonaktifkan saja agar file lama tetap aman.');
+        }
+
+        $account->delete();
+
+        return back()->with('success', 'Akun berhasil dihapus dari ArinDrive. File di Google Drive tidak dihapus.');
+    }
+
+    public function toggleAccount($id)
+    {
+        $account = \App\Models\DriveAccount::findOrFail($id);
+
+        $account->update([
+            'is_active' => !$account->is_active,
+        ]);
+
+        return back()->with('success', 'Status akun berhasil diubah.');
     }
 }
