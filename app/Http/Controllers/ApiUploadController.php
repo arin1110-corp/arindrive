@@ -9,6 +9,7 @@ use App\Services\GoogleDriveService;
 use Google\Service\Drive;
 use Google\Service\Drive\DriveFile as GoogleDriveFile;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class ApiUploadController extends Controller
 {
@@ -89,6 +90,7 @@ class ApiUploadController extends Controller
         ]);
 
         $file = DriveFile::create([
+            'file_uid' => (string) Str::uuid(),
             'drive_account_id' => $account->id,
             'google_file_id' => $created->id,
             'name' => $created->name,
@@ -111,7 +113,7 @@ class ApiUploadController extends Controller
             'message' => 'File berhasil diupload.',
             'data' => [
                 'file_id' => $file->id,
-                'url' => route('files.show', $file->id),
+                'url' => route('files.show', $file->file_uid),
                 'name' => $file->name,
                 'original_name' => $file->original_name,
                 'size' => $file->size,

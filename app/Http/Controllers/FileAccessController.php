@@ -8,10 +8,11 @@ use Google\Service\Drive;
 
 class FileAccessController extends Controller
 {
-    public function show($id, GoogleDriveService $google)
+    public function show($file_uid, GoogleDriveService $google)
     {
         $file = DriveFile::with('driveAccount')
-            ->findOrFail($id);
+            ->where('file_uid', $file_uid)
+            ->firstOrFail();
 
         $client = $google->clientFromAccount($file->driveAccount);
 

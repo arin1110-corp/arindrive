@@ -16,9 +16,19 @@ class DriveController extends Controller
     public function index()
     {
         return view('dashboard', [
-            'groups' => \App\Models\DriveGroup::with('accounts')->where('is_active', true)->orderBy('name')->get(),
-            'accounts' => \App\Models\DriveAccount::with('group')->latest()->get(),
-            'files' => \App\Models\DriveFile::with('driveAccount.group')->latest()->get(),
+            'groups' => \App\Models\DriveGroup::with('accounts')
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(),
+
+            'accounts' => \App\Models\DriveAccount::with('group')
+                ->latest()
+                ->get(),
+
+            'files' => \App\Models\DriveFile::with('driveAccount.group')
+                ->latest()
+                ->paginate(10),
+
             'apiClients' => \App\Models\ApiClient::latest()->get(),
         ]);
     }

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class DriveFile extends Model
 {
     protected $fillable = [
+        'file_uid',
         'drive_account_id',
         'google_file_id',
         'name',

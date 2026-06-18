@@ -11,7 +11,7 @@ use App\Http\Controllers\FileAccessController;
 Route::get('/login', [AdminAuthController::class, 'loginForm'])->name('admin.login');
 Route::post('/login', [AdminAuthController::class, 'login'])->name('admin.login.process');
 
-Route::get('/f/{file}', [FileAccessController::class, 'show'])->name('files.show');
+Route::get('/f/{file_uid}', [FileAccessController::class, 'show'])->name('files.show');
 
 Route::middleware('admin.only')->group(function () {
     Route::post('/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');

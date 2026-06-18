@@ -172,7 +172,8 @@
                             @csrf
                             @method('DELETE')
 
-                            <button onclick="return confirm('Hapus grup ini? Pastikan tidak ada akun Drive di dalam grup.')"
+                            <button
+                                onclick="return confirm('Hapus grup ini? Pastikan tidak ada akun Drive di dalam grup.')"
                                 class="px-3 py-2 bg-red-600 text-white rounded-lg text-sm w-full">
                                 Hapus Grup
                             </button>
@@ -274,7 +275,8 @@
                         <form method="POST" action="{{ route('accounts.delete', $account->id) }}">
                             @csrf
                             @method('DELETE')
-                            <button onclick="return confirm('Hapus akun dari ArinDrive? File di Google Drive tidak dihapus.')"
+                            <button
+                                onclick="return confirm('Hapus akun dari ArinDrive? File di Google Drive tidak dihapus.')"
                                 class="px-3 py-2 bg-red-600 text-white rounded-lg text-sm">
                                 Hapus
                             </button>
@@ -289,13 +291,13 @@
         </div>
 
         <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 mb-8">
-            <h2 class="text-xl font-bold mb-4">API Clients</h2>
+            <h2 class="text-xl font-bold mb-4">Daftar Aplikasi API</h2>
 
             <form action="{{ route('api-clients.store') }}" method="POST"
                 class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
                 @csrf
 
-                <input type="text" name="name" placeholder="Contoh: SAPLARIN"
+                <input type="text" name="name" placeholder="Contoh: SAPLARIN, SADARIN, SIMONTORIN"
                     class="border border-slate-300 rounded-xl p-3">
 
                 <select name="group_slug" class="border border-slate-300 rounded-xl p-3">
@@ -314,25 +316,27 @@
                 <table class="w-full text-sm border border-slate-200">
                     <thead class="bg-slate-100">
                         <tr>
-                            <th class="border p-3 text-left">Nama</th>
-                            <th class="border p-3 text-left">Group</th>
+                            <th class="border p-3 text-left">Aplikasi</th>
+                            <th class="border p-3 text-left">Akses Grup</th>
                             <th class="border p-3 text-left">Token</th>
                             <th class="border p-3 text-left">Status</th>
-                            <th class="border p-3 text-left">Last Used</th>
+                            <th class="border p-3 text-left">Terakhir Dipakai</th>
                             <th class="border p-3 text-left">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($apiClients as $client)
                             <tr class="hover:bg-slate-50">
-                                <td class="border p-3 font-medium">{{ $client->name }}</td>
-                                <td class="border p-3">{{ $client->group_slug ?? 'Semua' }}</td>
+                                <td class="border p-3 font-semibold">{{ $client->name }}</td>
+                                <td class="border p-3">{{ $client->group_slug ?? 'Semua Grup' }}</td>
                                 <td class="border p-3 text-xs break-all">{{ $client->token }}</td>
                                 <td class="border p-3">
                                     @if ($client->is_active)
-                                        <span class="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full">Aktif</span>
+                                        <span
+                                            class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs">Aktif</span>
                                     @else
-                                        <span class="text-xs bg-red-100 text-red-700 px-3 py-1 rounded-full">Nonaktif</span>
+                                        <span
+                                            class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs">Nonaktif</span>
                                     @endif
                                 </td>
                                 <td class="border p-3">
@@ -361,7 +365,7 @@
                         @empty
                             <tr>
                                 <td colspan="6" class="text-center p-5 text-slate-500">
-                                    Belum ada API Client.
+                                    Belum ada aplikasi API.
                                 </td>
                             </tr>
                         @endforelse
@@ -371,43 +375,83 @@
         </div>
 
         <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-            <h2 class="text-xl font-bold mb-4">Daftar File</h2>
+    <h2 class="text-xl font-bold mb-4">Daftar File</h2>
 
-            <div class="overflow-x-auto">
-                <table class="w-full border border-slate-200 text-sm">
-                    <thead class="bg-slate-100">
-                        <tr>
-                            <th class="p-3 text-left border">Nama File</th>
-                            <th class="p-3 text-left border">Ukuran</th>
-                            <th class="p-3 text-left border">MIME</th>
-                            <th class="p-3 text-left border">Grup</th>
-                            <th class="p-3 text-left border">Akun Drive</th>
-                            <th class="p-3 text-left border">Google File ID</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($files as $file)
-                            <tr class="hover:bg-slate-50">
-                                <td class="p-3 border font-medium">{{ $file->name }}</td>
-                                <td class="p-3 border">
-                                    {{ number_format($file->size / 1024 / 1024, 2) }} MB
-                                </td>
-                                <td class="p-3 border">{{ $file->mime_type }}</td>
-                                <td class="p-3 border">{{ $file->driveAccount?->group?->name }}</td>
-                                <td class="p-3 border">{{ $file->driveAccount?->email }}</td>
-                                <td class="p-3 border text-xs break-all">{{ $file->google_file_id }}</td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="6" class="p-5 text-center text-slate-500">
-                                    Belum ada file diupload.
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
+    <div class="overflow-x-auto">
+        <table class="w-full border border-slate-200 text-sm">
+            <thead class="bg-slate-100">
+                <tr>
+                    <th class="p-3 text-left border">Nama File</th>
+                    <th class="p-3 text-left border">Aplikasi</th>
+                    <th class="p-3 text-left border">Folder</th>
+                    <th class="p-3 text-left border">Reference</th>
+                    <th class="p-3 text-left border">Ukuran</th>
+                    <th class="p-3 text-left border">Grup</th>
+                    <th class="p-3 text-left border">Akun Drive</th>
+                    <th class="p-3 text-left border">Link</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($files as $file)
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-3 border font-medium">
+                            {{ $file->name }}
+                            <div class="text-xs text-slate-400">
+                                {{ $file->original_name ?? '-' }}
+                            </div>
+                        </td>
+
+                        <td class="p-3 border">
+                            {{ strtoupper($file->source_app ?? '-') }}
+                        </td>
+
+                        <td class="p-3 border">
+                            {{ $file->folder ?? '-' }}
+                        </td>
+
+                        <td class="p-3 border text-xs">
+                            {{ $file->reference_id ?? '-' }}
+                        </td>
+
+                        <td class="p-3 border">
+                            {{ number_format($file->size / 1024 / 1024, 2) }} MB
+                        </td>
+
+                        <td class="p-3 border">
+                            {{ $file->driveAccount?->group?->name ?? '-' }}
+                        </td>
+
+                        <td class="p-3 border">
+                            {{ $file->driveAccount?->email ?? '-' }}
+                        </td>
+
+                        <td class="p-3 border">
+                            @if($file->file_uid)
+                                <a href="{{ route('files.show', $file->file_uid) }}"
+                                    target="_blank"
+                                    class="text-blue-600 hover:underline">
+                                    Buka
+                                </a>
+                            @else
+                                -
+                            @endif
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="8" class="p-5 text-center text-slate-500">
+                            Belum ada file diupload.
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mt-5">
+        {{ $files->links() }}
+    </div>
+</div>
 
     </div>
 
