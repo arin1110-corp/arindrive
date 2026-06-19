@@ -49,9 +49,7 @@ class ApiMoveDriveFileController extends Controller
                 'fields' => 'id,name,parents,webViewLink',
             ]);
 
-            $previousParents = $file->parents
-                ? implode(',', $file->parents)
-                : null;
+            $previousParents = $file->parents ? implode(',', $file->parents) : null;
 
             $updated = $drive->files->update(
                 $request->google_file_id,
