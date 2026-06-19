@@ -6,6 +6,7 @@ use App\Models\ApiClient;
 use App\Models\DriveAccount;
 use App\Services\GoogleDriveService;
 use Google\Service\Drive;
+use Google\Service\Drive\DriveFile;
 use Illuminate\Http\Request;
 
 class ApiMoveDriveFileController extends Controller
@@ -32,8 +33,12 @@ class ApiMoveDriveFileController extends Controller
         ]);
 
         $account = $request->drive_account_id
-            ? DriveAccount::where('id', $request->drive_account_id)->where('is_active', true)->first()
-            : DriveAccount::where('is_active', true)->latest()->first();
+            ? DriveAccount::where('id', $request->drive_account_id)
+            ->where('is_active', true)
+            ->first()
+            : DriveAccount::where('is_active', true)
+            ->latest()
+            ->first();
 
         if (!$account) {
             return response()->json([
@@ -49,16 +54,23 @@ class ApiMoveDriveFileController extends Controller
                 'fields' => 'id,name,parents,webViewLink',
             ]);
 
-            $previousParents = $file->parents ? implode(',', $file->parents) : null;
+            $previousParents = $file->parents
+                ? implode(',', $file->parents)
+                : null;
+
+            $params = [
+                'addParents' => $request->folder_id,
+                'fields' => 'id,name,parents,webViewLink',
+            ];
+
+            if ($previousParents) {
+                $params['removeParents'] = $previousParents;
+            }
 
             $updated = $drive->files->update(
                 $request->google_file_id,
-                null,
-                [
-                    'addParents' => $request->folder_id,
-                    'removeParents' => $previousParents,
-                    'fields' => 'id,name,parents,webViewLink',
-                ]
+                new DriveFile(),
+                $params
             );
 
             $apiClient->update([
