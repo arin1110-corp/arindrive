@@ -21,10 +21,7 @@
             </div>
 
             <div class="flex flex-wrap gap-3">
-                <a href="{{ route('google.reconnect', $account->id) }}"
-                    class="px-3 py-2 rounded-lg bg-yellow-500 text-white text-sm">
-                    🔄 Reconnect
-                </a>
+
                 <a href="{{ route('drive.sync') }}"
                     class="px-5 py-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-50">
                     Sync Storage
@@ -41,6 +38,7 @@
                         Logout
                     </button>
                 </form>
+
             </div>
         </div>
 
@@ -269,9 +267,16 @@
 
                     <p class="text-xs text-slate-500 mt-2">{{ $percent }}% digunakan</p>
 
-                    <div class="flex gap-2 mt-4">
+                    <div class="flex flex-wrap gap-2 mt-4">
+
+                        <a href="{{ route('google.reconnect', $account->id) }}"
+                            class="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+                            🔄 Reconnect
+                        </a>
+
                         <form method="POST" action="{{ route('accounts.toggle', $account->id) }}">
                             @csrf
+
                             <button class="px-3 py-2 bg-yellow-500 text-white rounded-lg text-sm">
                                 {{ $account->is_active ? 'Nonaktifkan' : 'Aktifkan' }}
                             </button>
@@ -280,12 +285,14 @@
                         <form method="POST" action="{{ route('accounts.delete', $account->id) }}">
                             @csrf
                             @method('DELETE')
+
                             <button
                                 onclick="return confirm('Hapus akun dari ArinDrive? File di Google Drive tidak dihapus.')"
                                 class="px-3 py-2 bg-red-600 text-white rounded-lg text-sm">
                                 Hapus
                             </button>
                         </form>
+
                     </div>
                 </div>
             @empty
