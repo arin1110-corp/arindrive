@@ -26,31 +26,80 @@ class GoogleDriveService
         return $client;
     }
 
-    public function clientFromAccount(DriveAccount $account): Client
-    {
+    public function clientFromAccount(
+        DriveAccount $account
+    ): Client {
         $client = $this->client();
 
-        $client->setAccessToken(json_decode($account->access_token, true));
+        if (!$account->access_token) {
+            throw new \Exception(
+                'Access token Google Drive tidak ditemukan.'
+            );
+        }
 
-        if ($client->isAccessTokenExpired() && $account->refresh_token) {
-            $newToken = $client->fetchAccessTokenWithRefreshToken($account->refresh_token);
+        $client->setAccessToken(
+            json_decode($account->access_token, true)
+        );
 
-            $oldToken = json_decode($account->access_token, true);
-            $mergedToken = array_merge($oldToken ?? [], $newToken);
+        if ($client->isAccessTokenExpired()) {
+
+            if (!$account->refresh_token) {
+                throw new \Exception(
+                    'Refresh token Google Drive tidak ditemukan. Silakan reconnect akun Google.'
+                );
+            }
+
+            $newToken =
+                $client->fetchAccessTokenWithRefreshToken(
+                    $account->refresh_token
+                );
+
+            if (isset($newToken['error'])) {
+
+                if (
+                    $newToken['error'] === 'invalid_grant'
+                ) {
+                    throw new \Exception(
+                        'Token Google Drive expired atau dicabut. Silakan reconnect akun Google.'
+                    );
+                }
+
+                throw new \Exception(
+                    $newToken['error_description']
+                        ?? 'Gagal memperbarui token Google Drive.'
+                );
+            }
+
+            $oldToken = json_decode(
+                $account->access_token,
+                true
+            );
+
+            $mergedToken = array_merge(
+                $oldToken ?? [],
+                $newToken
+            );
 
             $account->update([
-                'access_token' => json_encode($mergedToken),
+                'access_token' =>
+                json_encode($mergedToken),
             ]);
 
-            $client->setAccessToken($mergedToken);
+            $client->setAccessToken(
+                $mergedToken
+            );
         }
 
         return $client;
     }
 
-    public function syncStorage(DriveAccount $account): void
-    {
-        $client = $this->clientFromAccount($account);
+    public function syncStorage(
+        DriveAccount $account
+    ): void {
+        $client = $this->clientFromAccount(
+            $account
+        );
+
         $drive = new Drive($client);
 
         $about = $drive->about->get([
@@ -60,8 +109,11 @@ class GoogleDriveService
         $quota = $about->getStorageQuota();
 
         $account->update([
-            'storage_limit' => $quota->getLimit() ?? 0,
-            'storage_used' => $quota->getUsage() ?? 0,
+            'storage_limit' =>
+            $quota->getLimit() ?? 0,
+
+            'storage_used' =>
+            $quota->getUsage() ?? 0,
         ]);
     }
 }

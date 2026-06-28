@@ -21,6 +21,10 @@
             </div>
 
             <div class="flex flex-wrap gap-3">
+                <a href="{{ route('google.reconnect', $account->id) }}"
+                    class="px-3 py-2 rounded-lg bg-yellow-500 text-white text-sm">
+                    🔄 Reconnect
+                </a>
                 <a href="{{ route('drive.sync') }}"
                     class="px-5 py-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-50">
                     Sync Storage
@@ -379,7 +383,7 @@
             <h2 class="text-xl font-bold mb-4">Daftar File</h2>
 
             <div class="overflow-x-auto">
-              
+
                 <table id="filesTable" class="w-full border border-slate-200 text-sm">
                     <thead class="bg-slate-100">
                         <tr>
@@ -446,32 +450,32 @@
         </div>
 
     </div>
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>
 
-<script>
-    $(document).ready(function () {
-        $('#filesTable').DataTable({
-            pageLength: 10,
-            lengthMenu: [10, 25, 50, 100],
-            order: [],
-            language: {
-                search: "Cari:",
-                lengthMenu: "Tampilkan _MENU_ data",
-                info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
-                infoEmpty: "Tidak ada data",
-                infoFiltered: "(difilter dari _MAX_ total data)",
-                zeroRecords: "Data tidak ditemukan",
-                paginate: {
-                    first: "Pertama",
-                    last: "Terakhir",
-                    next: "Berikutnya",
-                    previous: "Sebelumnya"
+    <script>
+        $(document).ready(function() {
+            $('#filesTable').DataTable({
+                pageLength: 10,
+                lengthMenu: [10, 25, 50, 100],
+                order: [],
+                language: {
+                    search: "Cari:",
+                    lengthMenu: "Tampilkan _MENU_ data",
+                    info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+                    infoEmpty: "Tidak ada data",
+                    infoFiltered: "(difilter dari _MAX_ total data)",
+                    zeroRecords: "Data tidak ditemukan",
+                    paginate: {
+                        first: "Pertama",
+                        last: "Terakhir",
+                        next: "Berikutnya",
+                        previous: "Sebelumnya"
+                    }
                 }
-            }
+            });
         });
-    });
-</script>
+    </script>
 </body>
 
 </html>
