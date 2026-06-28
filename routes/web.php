@@ -36,4 +36,8 @@ Route::middleware('admin.only')->group(function () {
     Route::post('/api-clients', [ApiClientController::class, 'store'])->name('api-clients.store');
     Route::post('/api-clients/{client}/toggle', [ApiClientController::class, 'toggle'])->name('api-clients.toggle');
     Route::delete('/api-clients/{client}', [ApiClientController::class, 'destroy'])->name('api-clients.destroy');
+    Route::get(
+        '/google/reconnect/{id}',
+        [GoogleController::class, 'reconnect']
+    )->name('google.reconnect');
 });
