@@ -5,6 +5,11 @@ use App\Http\Controllers\ApiUploadController;
 use App\Http\Controllers\ApiUploadDriveController;
 use App\Http\Controllers\ApiResolveFileController;
 use App\Http\Controllers\ApiMoveDriveFileController;
+use App\Http\Controllers\ApiDeleteDriveController;
+
+
+
+Route::post('/delete-drive', [ApiDeleteDriveController::class, 'delete']);
 
 
 Route::post('/upload', [ApiUploadController::class, 'upload']);
