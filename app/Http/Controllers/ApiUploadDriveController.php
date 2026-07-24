@@ -61,12 +61,9 @@ class ApiUploadDriveController extends Controller
                 $google->clientFromAccount($account)
             );
 
-            $baseName = pathinfo($request->filename, PATHINFO_FILENAME);
-
-            $this->deleteOldFileByBaseName(
+            $this->deleteOldFileByReference(
                 $drive,
-                $request->folder_id,
-                $baseName
+                $request->reference_id
             );
 
             $metadata = new GoogleDriveFile([
@@ -134,17 +131,23 @@ class ApiUploadDriveController extends Controller
         }
     }
 
-    private function deleteOldFileByBaseName(Drive $drive, string $folderId, string $baseName): void
+    private function deleteOldFileByReference(Drive $drive, ?string $referenceId): void
     {
-        $safeBaseName = str_replace("'", "\\'", $baseName);
+        if (!$referenceId) {
+            return;
+        }
 
-        $files = $drive->files->listFiles([
-            'q' => "'{$folderId}' in parents and trashed = false and name contains '{$safeBaseName}'",
-            'fields' => 'files(id,name)',
-        ]);
+        $oldFiles = DriveFile::where('reference_id', $referenceId)->get();
 
-        foreach ($files->files as $file) {
-            $drive->files->delete($file->id);
+        foreach ($oldFiles as $old) {
+
+            try {
+                $drive->files->delete($old->google_file_id);
+            } catch (\Throwable $e) {
+                // abaikan jika file sudah tidak ada
+            }
+
+            $old->delete();
         }
     }
 }
