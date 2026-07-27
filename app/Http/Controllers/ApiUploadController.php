@@ -60,9 +60,12 @@ class ApiUploadController extends Controller
                 $google->clientFromAccount($account)
             );
 
-            $this->deleteOldFileByReference(
+            $baseName = pathinfo($request->filename, PATHINFO_FILENAME);
+
+            $this->deleteOldFileByBaseName(
                 $drive,
-                $request->reference_id
+                $request->folder_id,
+                $baseName
             );
 
             $metadata = new GoogleDriveFile([
@@ -127,6 +130,20 @@ class ApiUploadController extends Controller
                 'success' => false,
                 'message' => 'Gagal upload ke Google Drive: ' . $e->getMessage(),
             ], 500);
+        }
+    }
+
+    private function deleteOldFileByBaseName(Drive $drive, string $folderId, string $baseName): void
+    {
+        $safeBaseName = str_replace("'", "\\'", $baseName);
+
+        $files = $drive->files->listFiles([
+            'q' => "'{$folderId}' in parents and trashed = false and name contains '{$safeBaseName}'",
+            'fields' => 'files(id,name)',
+        ]);
+
+        foreach ($files->files as $file) {
+            $drive->files->delete($file->id);
         }
     }
 
