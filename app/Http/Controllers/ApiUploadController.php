@@ -146,26 +146,6 @@ class ApiUploadController extends Controller
             $drive->files->delete($file->id);
         }
     }
-
-    private function deleteOldFileByReference(Drive $drive, ?string $referenceId): void
-    {
-        if (!$referenceId) {
-            return;
-        }
-
-        $oldFiles = DriveFile::where('reference_id', $referenceId)->get();
-
-        foreach ($oldFiles as $old) {
-
-            try {
-                $drive->files->delete($old->google_file_id);
-            } catch (\Throwable $e) {
-                // abaikan jika file sudah tidak ada
-            }
-
-            $old->delete();
-        }
-    }
     public function uploadSPJ(Request $request, DriveAllocator $allocator, GoogleDriveService $google)
     {
         $token = str_replace('Bearer ', '', $request->header('Authorization'));
