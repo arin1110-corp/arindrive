@@ -7,16 +7,14 @@ use App\Http\Controllers\ApiResolveFileController;
 use App\Http\Controllers\ApiMoveDriveFileController;
 use App\Http\Controllers\ApiDeleteDriveController;
 
-
-
 Route::post('/delete-drive', [ApiDeleteDriveController::class, 'delete']);
 
-
 Route::post('/upload', [ApiUploadController::class, 'upload']);
+
+Route::post('/upload-spj', [ApiUploadController::class, 'uploadSPJ']);
 
 Route::post('/upload-drive', [ApiUploadDriveController::class, 'upload']);
 
 Route::post('/move-drive-file', [ApiMoveDriveFileController::class, 'move']);
-
 
 Route::post('/resolve-file', [ApiResolveFileController::class, 'resolve']);
