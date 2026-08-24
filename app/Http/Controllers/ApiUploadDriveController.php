@@ -68,7 +68,12 @@ class ApiUploadDriveController extends Controller
                 $request->folder_id,
                 $baseName
             );
-
+            \Log::info('ARINDRIVE UPLOAD DEBUG', [
+                'account_id' => $account->id,
+                'account_email' => $account->email,
+                'folder_id' => $request->folder_id,
+                'filename' => $request->filename,
+            ]);
             $metadata = new GoogleDriveFile([
                 'name' => $request->filename,
                 'parents' => [$request->folder_id],
