@@ -22,259 +22,157 @@ class ApiUploadDriveController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function upload(
-        Request $request,
-        GoogleDriveService $google
-    ) {
-        $token = str_replace(
-            'Bearer ',
-            '',
-            $request->header('Authorization')
-        );
+    public function upload(Request $request, GoogleDriveService $google)
+    {
+        $token = str_replace('Bearer ', '', $request->header('Authorization'));
 
-        $apiClient = ApiClient::where(
-            'token',
-            $token
-        )
-            ->where(
-                'is_active',
-                true
-            )
-            ->first();
+        $apiClient = ApiClient::where('token', $token)->where('is_active', true)->first();
 
         if (!$apiClient) {
-            return response()->json([
-                'success' => false,
-                'message' => 'API token tidak valid.',
-            ], 401);
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'API token tidak valid.',
+                ],
+                401,
+            );
         }
 
         $request->validate([
-            'file' =>
-            'required|file|max:2048000',
+            'file' => 'required|file|max:2048000',
 
-            'folder_id' =>
-            'required|string',
+            'folder_id' => 'required|string',
 
-            'filename' =>
-            'required|string|max:255',
+            'filename' => 'required|string|max:255',
 
-            'drive_account_id' =>
-            'nullable|integer',
+            'drive_account_id' => 'nullable|integer',
 
-            'source_app' =>
-            'nullable|string|max:100',
+            'source_app' => 'nullable|string|max:100',
 
-            'folder' =>
-            'nullable|string|max:150',
+            'folder' => 'nullable|string|max:150',
 
-            'reference_id' =>
-            'nullable|string|max:150',
+            'reference_id' => 'nullable|string|max:150',
         ]);
 
         try {
-
-            $account = $this->findAccountForFolder(
-                $request->folder_id,
-                $request->drive_account_id,
-                $google
-            );
+            $account = $this->findAccountForFolder($request->folder_id, $request->drive_account_id, $google);
 
             if (!$account) {
-                return response()->json([
-                    'success' => false,
-                    'message' =>
-                    'Tidak ditemukan akun Google Drive aktif yang memiliki akses ke folder tujuan.',
-                ], 422);
+                return response()->json(
+                    [
+                        'success' => false,
+                        'message' => 'Tidak ditemukan akun Google Drive aktif yang memiliki akses ke folder tujuan.',
+                    ],
+                    422,
+                );
             }
 
-            $drive = new Drive(
-                $google->clientFromAccount(
-                    $account
-                )
-            );
+            $drive = new Drive($google->clientFromAccount($account));
 
-            $uploadedFile =
-                $request->file('file');
+            $uploadedFile = $request->file('file');
 
-            $baseName = pathinfo(
-                $request->filename,
-                PATHINFO_FILENAME
-            );
+            $baseName = pathinfo($request->filename, PATHINFO_FILENAME);
 
-            $this->deleteOldFileByBaseName(
-                $drive,
-                $request->folder_id,
-                $baseName
-            );
+            $this->deleteOldFileByBaseName($drive, $request->folder_id, $baseName);
 
-            $metadata =
-                new GoogleDriveFile([
-                    'name' =>
-                $request->filename,
+            $metadata = new GoogleDriveFile([
+                'name' => $request->filename,
 
-                    'parents' => [
-                        $request->folder_id
-                ],
-                ]);
-
-            $created =
-                $drive->files->create(
-                    $metadata,
-                [
-                        'data' =>
-                    file_get_contents(
-                        $uploadedFile->getRealPath()
-                    ),
-
-                        'mimeType' =>
-                    $uploadedFile->getMimeType(),
-
-                        'uploadType' =>
-                    'multipart',
-
-                        'fields' =>
-                    'id,name,webViewLink,webContentLink,mimeType,size',
-                    ]
-                );
-
-            $permission =
-                new Permission([
-                    'type' =>
-                'anyone',
-
-                    'role' =>
-                'reader',
-                ]);
-
-            $drive->permissions->create(
-                $created->id,
-                $permission
-            );
-
-            $driveFile =
-                DriveFile::create([
-                    'file_uid' =>
-                (string) Str::uuid(),
-
-                    'drive_account_id' =>
-                $account->id,
-
-                    'google_file_id' =>
-                $created->id,
-
-                    'name' =>
-                $created->name,
-
-                    'original_name' =>
-                $uploadedFile
-                    ->getClientOriginalName(),
-
-                    'mime_type' =>
-                $created->mimeType
-                        ??
-                        $uploadedFile
-                    ->getMimeType(),
-
-                    'size' =>
-                $uploadedFile->getSize(),
-
-                    'source_app' =>
-                $request->source_app
-                        ??
-                        'sadarin',
-
-                    'folder' =>
-                $request->folder
-                        ??
-                        'upload-drive',
-
-                    'reference_id' =>
-                $request->reference_id,
-                ]);
-
-            $apiClient->update([
-                'last_used_at' =>
-                now(),
+                'parents' => [$request->folder_id],
             ]);
 
-            $url =
-                'https://drive.google.com/file/d/'
-                .
-                $created->id
-                .
-                '/view';
+            $created = $drive->files->create($metadata, [
+                'data' => file_get_contents($uploadedFile->getRealPath()),
+
+                'mimeType' => $uploadedFile->getMimeType(),
+
+                'uploadType' => 'multipart',
+
+                'fields' => 'id,name,webViewLink,webContentLink,mimeType,size',
+            ]);
+
+            $permission = new Permission([
+                'type' => 'anyone',
+
+                'role' => 'reader',
+            ]);
+
+            $drive->permissions->create($created->id, $permission);
+
+            $driveFile = DriveFile::create([
+                'file_uid' => (string) Str::uuid(),
+
+                'drive_account_id' => $account->id,
+
+                'google_file_id' => $created->id,
+
+                'name' => $created->name,
+
+                'original_name' => $uploadedFile->getClientOriginalName(),
+
+                'mime_type' => $created->mimeType ?? $uploadedFile->getMimeType(),
+
+                'size' => $uploadedFile->getSize(),
+
+                'source_app' => $request->source_app ?? 'sadarin',
+
+                'folder' => $request->folder ?? 'upload-drive',
+
+                'reference_id' => $request->reference_id,
+            ]);
+
+            $apiClient->update([
+                'last_used_at' => now(),
+            ]);
+
+            $url = 'https://drive.google.com/file/d/' . $created->id . '/view';
 
             return response()->json([
-                'success' =>
-                true,
+                'success' => true,
 
-                'message' =>
-                'File berhasil diupload ke Google Drive.',
+                'message' => 'File berhasil diupload ke Google Drive.',
 
                 'data' => [
+                    'file_id' => $driveFile->id,
 
-                    'file_id' =>
-                    $driveFile->id,
+                    'file_uid' => $driveFile->file_uid,
 
-                    'file_uid' =>
-                    $driveFile->file_uid,
+                    'google_file_id' => $created->id,
 
-                    'google_file_id' =>
-                    $created->id,
+                    'name' => $created->name,
 
-                    'name' =>
-                    $created->name,
+                    'original_name' => $uploadedFile->getClientOriginalName(),
 
-                    'original_name' =>
-                    $uploadedFile
-                        ->getClientOriginalName(),
+                    'mime_type' => $created->mimeType ?? $uploadedFile->getMimeType(),
 
-                    'mime_type' =>
-                    $created->mimeType
-                        ??
-                        $uploadedFile
-                        ->getMimeType(),
+                    'size' => $uploadedFile->getSize(),
 
-                    'size' =>
-                    $uploadedFile->getSize(),
+                    'url' => $url,
 
-                    'url' =>
-                    $url,
+                    'drive_account' => $account->email,
 
-                    'drive_account' =>
-                    $account->email,
+                    'drive_account_id' => $account->id,
 
-                    'drive_account_id' =>
-                    $account->id,
+                    'folder_id' => $request->folder_id,
 
-                    'folder_id' =>
-                    $request->folder_id,
+                    'source_app' => $driveFile->source_app,
 
-                    'source_app' =>
-                    $driveFile->source_app,
+                    'folder' => $driveFile->folder,
 
-                    'folder' =>
-                    $driveFile->folder,
-
-                    'reference_id' =>
-                    $driveFile->reference_id,
+                    'reference_id' => $driveFile->reference_id,
                 ],
             ]);
         } catch (\Throwable $e) {
+            return response()->json(
+                [
+                    'success' => false,
 
-            return response()->json([
-                'success' =>
-                false,
-
-                'message' =>
-                'Gagal upload ke Google Drive: '
-                    .
-                    $e->getMessage(),
-            ], 500);
+                    'message' => 'Gagal upload ke Google Drive: ' . $e->getMessage(),
+                ],
+                500,
+            );
         }
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -284,551 +182,283 @@ class ApiUploadDriveController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function uploadSPJ(
-        Request $request,
-        GoogleDriveService $google
-    ) {
-        $token = str_replace(
-            'Bearer ',
-            '',
-            $request->header('Authorization')
-        );
+    public function uploadSPJ(Request $request, GoogleDriveService $google)
+    {
+        /*
+    |--------------------------------------------------------------------------
+    | API TOKEN
+    |--------------------------------------------------------------------------
+    */
 
-        $apiClient = ApiClient::where(
-            'token',
-            $token
-        )
-            ->where(
-                'is_active',
-                true
-            )
-            ->first();
+        $token = str_replace('Bearer ', '', $request->header('Authorization'));
+
+        $apiClient = ApiClient::where('token', $token)->where('is_active', true)->first();
 
         if (!$apiClient) {
-            return response()->json([
-                'success' => false,
-                'message' => 'API token tidak valid.',
-            ], 401);
+            return response()->json(
+                [
+                    'success' => false,
+                    'message' => 'API token tidak valid.',
+                ],
+                401,
+            );
         }
 
+        /*
+    |--------------------------------------------------------------------------
+    | VALIDASI
+    |--------------------------------------------------------------------------
+    */
+
         $request->validate([
-            'file' =>
-            'required|file|max:2048000',
+            'file' => 'required|file|max:2048000',
 
-            'folder_id' =>
-            'required|string',
+            'folder_id' => 'required|string',
 
-            'filename' =>
-            'required|string|max:255',
+            'filename' => 'required|string|max:255',
 
-            'drive_account_id' =>
-            'nullable|integer',
+            'drive_account_id' => 'nullable|integer',
 
-            'source_app' =>
-            'nullable|string|max:100',
+            'source_app' => 'nullable|string|max:100',
 
-            'folder' =>
-            'nullable|string|max:150',
+            'folder' => 'nullable|string|max:150',
 
-            'reference_id' =>
-            'nullable|string|max:150',
+            'reference_id' => 'nullable|string|max:150',
         ]);
 
         try {
-
             /*
-            |--------------------------------------------------------------------------
-            | FILE
-            |--------------------------------------------------------------------------
-            */
+        |--------------------------------------------------------------------------
+        | SAMA PERSIS DENGAN UPLOAD BIASA
+        |--------------------------------------------------------------------------
+        */
 
-            $uploadedFile =
-                $request->file('file');
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | CARI AKUN KHUSUS SPJ
-            |--------------------------------------------------------------------------
-            |
-            | Tidak menggunakan helper upload biasa.
-            |
-            | Prioritas:
-            |
-            | 1. Akun yang dipaksa dari request
-            | 2. Akun pemilik folder
-            | 3. Akun lain yang memiliki akses tulis
-            |
-            */
-
-            $account =
-                $this->findSPJAccountForFolder(
-                    $request->folder_id,
-                    $request->drive_account_id,
-                    $google
-                );
-
+            $account = $this->findAccountForFolder($request->folder_id, $request->drive_account_id, $google);
 
             if (!$account) {
-
-                return response()->json([
-                    'success' =>
-                    false,
-
-                    'message' =>
-                    'Akun Google Drive untuk folder SPJ tidak ditemukan atau tidak memiliki akses menulis.',
-                ], 422);
-            }
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | CLIENT GOOGLE DRIVE
-            |--------------------------------------------------------------------------
-            */
-
-            $drive =
-                new Drive(
-                    $google->clientFromAccount(
-                        $account
-                    )
-                );
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | VALIDASI FOLDER
-            |--------------------------------------------------------------------------
-            */
-
-            $folder =
-                $drive->files->get(
-                    $request->folder_id,
+                return response()->json(
                     [
-                        'fields' =>
-                        'id,name,mimeType,parents,driveId,capabilities,owners(emailAddress)',
-                    ]
-                );
-
-
-            if (
-                $folder->mimeType
-                !==
-                'application/vnd.google-apps.folder'
-            ) {
-
-                throw new \Exception(
-                    'Folder SPJ tidak valid. ID tujuan bukan folder Google Drive.'
+                        'success' => false,
+                        'message' => 'Tidak ditemukan akun Google Drive aktif yang memiliki akses ke folder tujuan.',
+                    ],
+                    422,
                 );
             }
 
+            /*
+        |--------------------------------------------------------------------------
+        | CLIENT GOOGLE DRIVE
+        |--------------------------------------------------------------------------
+        */
+
+            $drive = new Drive($google->clientFromAccount($account));
 
             /*
-            |--------------------------------------------------------------------------
-            | VALIDASI BISA MENAMBAHKAN FILE
-            |--------------------------------------------------------------------------
-            */
+        |--------------------------------------------------------------------------
+        | FILE
+        |--------------------------------------------------------------------------
+        */
 
-            $capabilities =
-                $folder->getCapabilities();
+            $uploadedFile = $request->file('file');
 
-            if (
-                $capabilities
-                &&
-                method_exists(
-                    $capabilities,
-                    'getCanAddChildren'
-                )
-            ) {
+            /*
+        |--------------------------------------------------------------------------
+        | HAPUS FILE SPJ LAMA
+        |--------------------------------------------------------------------------
+        |
+        | Ini SATU-SATUNYA bagian khusus SPJ.
+        |
+        | File lama dicari melalui database DriveFile.
+        | Akun lama diambil dari drive_account_id.
+        |
+        */
 
-                if (
-                    !$capabilities
-                        ->getCanAddChildren()
-                ) {
+            if ($request->reference_id) {
+                $oldFiles = DriveFile::where('reference_id', $request->reference_id)->get();
 
-                    throw new \Exception(
-                        'Akun Google Drive '
-                            .
-                            $account->email
-                            .
-                            ' tidak memiliki izin menambahkan file ke folder SPJ.'
-                    );
+                foreach ($oldFiles as $oldFile) {
+                    try {
+                        $oldAccount = DriveAccount::where('id', $oldFile->drive_account_id)->where('is_active', true)->first();
+
+                        if ($oldAccount) {
+                            $oldDrive = new Drive($google->clientFromAccount($oldAccount));
+
+                            $oldDrive->files->delete($oldFile->google_file_id);
+                        }
+                    } catch (\Throwable $e) {
+                        /*
+                    |------------------------------------------------------------------
+                    | File lama tidak ditemukan / token lama bermasalah.
+                    | Jangan menggagalkan upload file baru.
+                    |------------------------------------------------------------------
+                    */
+                    }
+
+                    /*
+                |--------------------------------------------------------------------------
+                | HAPUS RECORD DATABASE LAMA
+                |--------------------------------------------------------------------------
+                */
+
+                    $oldFile->delete();
                 }
             }
 
-
             /*
-            |--------------------------------------------------------------------------
-            | HAPUS FILE LAMA BERDASARKAN REFERENCE
-            |--------------------------------------------------------------------------
-            |
-            | Penting:
-            | File lama bisa berada di akun Gmail lama.
-            |
-            | Karena itu jangan menggunakan $drive yang sedang aktif.
-            |
-            */
+        |--------------------------------------------------------------------------
+        | METADATA
+        |--------------------------------------------------------------------------
+        |
+        | INI SAMA PERSIS DENGAN UPLOAD BIASA.
+        |
+        */
 
-            $this->deleteSPJOldFilesByReference(
-                $request->reference_id,
-                $google
-            );
+            $metadata = new GoogleDriveFile([
+                'name' => $request->filename,
 
-
-            /*
-            |--------------------------------------------------------------------------
-            | METADATA
-            |--------------------------------------------------------------------------
-            |
-            | PARENT DIPAKSA KE FOLDER SPJ.
-            |
-            */
-
-            $metadata =
-                new GoogleDriveFile([
-                    'name' =>
-                $request->filename,
-
-                    'parents' => [
-                        $request->folder_id
-                ],
-                ]);
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | UPLOAD
-            |--------------------------------------------------------------------------
-            */
-
-            $created =
-                $drive->files->create(
-                    $metadata,
-                [
-                        'data' =>
-                    file_get_contents(
-                        $uploadedFile->getRealPath()
-                    ),
-
-                        'mimeType' =>
-                    $uploadedFile->getMimeType(),
-
-                        'uploadType' =>
-                    'multipart',
-
-                    'supportsAllDrives' =>
-                    true,
-
-                    'fields' =>
-                    'id,name,parents,webViewLink,webContentLink,mimeType,size',
-                ]
-            );
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | PASTIKAN FILE MASUK FOLDER YANG BENAR
-            |--------------------------------------------------------------------------
-            */
-
-            $createdParents =
-                $created->getParents();
-
-            if (
-                !$createdParents
-                ||
-                !in_array(
-                    $request->folder_id,
-                    $createdParents,
-                    true
-                )
-            ) {
-
-                /*
-                |--------------------------------------------------------------------------
-                | COBA PINDAHKAN KE FOLDER YANG BENAR
-                |--------------------------------------------------------------------------
-                */
-
-                $drive->files->update(
-                    $created->id,
-                    new GoogleDriveFile(),
-                    [
-                        'addParents' =>
-                        $request->folder_id,
-
-                        'removeParents' =>
-                        $createdParents
-                            ?
-                            implode(
-                                ',',
-                                array_filter(
-                                    $createdParents,
-                                    function ($parent) use (
-                                        $request
-                                    ) {
-                                        return $parent
-                                            !==
-                                            $request->folder_id;
-                                    }
-                                )
-                            )
-                            :
-                            null,
-
-                        'supportsAllDrives' =>
-                        true,
-
-                        'fields' =>
-                        'id,name,parents,webViewLink,webContentLink,mimeType,size',
-                    ]
-                );
-            }
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | CEK ULANG PARENT
-            |--------------------------------------------------------------------------
-            */
-
-            $verify =
-                $drive->files->get(
-                    $created->id,
-                    [
-                        'fields' =>
-                        'id,name,parents,mimeType,size',
-                    ]
-                );
-
-
-            $verifyParents =
-                $verify->getParents();
-
-
-            if (
-                !$verifyParents
-                ||
-                !in_array(
-                    $request->folder_id,
-                    $verifyParents,
-                    true
-                )
-            ) {
-
-                /*
-                |--------------------------------------------------------------------------
-                | JIKA GAGAL, HAPUS FILE BARU
-                |--------------------------------------------------------------------------
-                */
-
-                try {
-                    $drive->files->delete(
-                        $created->id,
-                        [
-                            'supportsAllDrives' =>
-                            true,
-                        ]
-                    );
-                } catch (\Throwable $deleteError) {
-                }
-
-
-                throw new \Exception(
-                    'Google Drive tidak menempatkan file ke folder SPJ yang ditentukan.'
-                );
-            }
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | PUBLIC READ
-            |--------------------------------------------------------------------------
-            */
-
-            try {
-
-                $permission =
-                    new Permission([
-                    'type' =>
-                    'anyone',
-
-                    'role' =>
-                    'reader',
-                    ]);
-
-                $drive->permissions->create(
-                    $created->id,
-                    $permission,
-                    [
-                        'supportsAllDrives' =>
-                        true,
-                    ]
-                );
-            } catch (\Throwable $permissionError) {
-
-                /*
-                |--------------------------------------------------------------------------
-                | Permission gagal tidak membatalkan upload.
-                |--------------------------------------------------------------------------
-                */
-            }
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | SIMPAN DATABASE
-            |--------------------------------------------------------------------------
-            */
-
-            $driveFile =
-                DriveFile::create([
-                    'file_uid' =>
-                (string) Str::uuid(),
-
-                    'drive_account_id' =>
-                $account->id,
-
-                    'google_file_id' =>
-                $created->id,
-
-                    'name' =>
-                $created->name,
-
-                    'original_name' =>
-                $uploadedFile
-                    ->getClientOriginalName(),
-
-                    'mime_type' =>
-                $created->mimeType
-                        ??
-                        $uploadedFile
-                    ->getMimeType(),
-
-                    'size' =>
-                $uploadedFile->getSize(),
-
-                    'source_app' =>
-                $request->source_app
-                        ??
-                    'saplarin',
-
-                    'folder' =>
-                $request->folder
-                        ??
-                    'spj',
-
-                    'reference_id' =>
-                $request->reference_id,
-                ]);
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | UPDATE API CLIENT
-            |--------------------------------------------------------------------------
-            */
-
-            $apiClient->update([
-                'last_used_at' =>
-                now(),
+                'parents' => [$request->folder_id],
             ]);
 
+            /*
+        |--------------------------------------------------------------------------
+        | UPLOAD
+        |--------------------------------------------------------------------------
+        |
+        | SAMA PERSIS DENGAN UPLOAD BIASA.
+        |
+        */
+
+            $created = $drive->files->create($metadata, [
+                'data' => file_get_contents($uploadedFile->getRealPath()),
+
+                'mimeType' => $uploadedFile->getMimeType(),
+
+                'uploadType' => 'multipart',
+
+                'fields' => 'id,name,webViewLink,webContentLink,mimeType,size',
+            ]);
 
             /*
-            |--------------------------------------------------------------------------
-            | URL
-            |--------------------------------------------------------------------------
-            |
-            | Jangan menggunakan webViewLink karena pada beberapa kondisi
-            | Google dapat mengembalikan format berbeda.
-            |
-            */
+        |--------------------------------------------------------------------------
+        | PUBLIC READ
+        |--------------------------------------------------------------------------
+        |
+        | SAMA PERSIS DENGAN UPLOAD BIASA.
+        |
+        */
 
-            $url =
-                'https://drive.google.com/file/d/'
-                .
-                $created->id
-                .
-                '/view';
+            $permission = new Permission([
+                'type' => 'anyone',
 
+                'role' => 'reader',
+            ]);
+
+            $drive->permissions->create($created->id, $permission);
 
             /*
-            |--------------------------------------------------------------------------
-            | RESPONSE
-            |--------------------------------------------------------------------------
-            */
+        |--------------------------------------------------------------------------
+        | SIMPAN DATABASE
+        |--------------------------------------------------------------------------
+        */
+
+            $driveFile = DriveFile::create([
+                'file_uid' => (string) Str::uuid(),
+
+                'drive_account_id' => $account->id,
+
+                'google_file_id' => $created->id,
+
+                'name' => $created->name,
+
+                'original_name' => $uploadedFile->getClientOriginalName(),
+
+                'mime_type' => $created->mimeType ?? $uploadedFile->getMimeType(),
+
+                'size' => $uploadedFile->getSize(),
+
+                'source_app' => $request->source_app ?? 'saplarin',
+
+                'folder' => $request->folder ?? 'spj',
+
+                /*
+                |--------------------------------------------------------------------------
+                | INI YANG MEMBUAT SPJ BISA EDIT/HAPUS
+                |--------------------------------------------------------------------------
+                */
+
+                'reference_id' => $request->reference_id,
+            ]);
+
+            /*
+        |--------------------------------------------------------------------------
+        | UPDATE API CLIENT
+        |--------------------------------------------------------------------------
+        */
+
+            $apiClient->update([
+                'last_used_at' => now(),
+            ]);
+
+            /*
+        |--------------------------------------------------------------------------
+        | URL
+        |--------------------------------------------------------------------------
+        */
+
+            $url = 'https://drive.google.com/file/d/' . $created->id . '/view';
+
+            /*
+        |--------------------------------------------------------------------------
+        | RESPONSE
+        |--------------------------------------------------------------------------
+        */
 
             return response()->json([
-                'success' =>
-                true,
+                'success' => true,
 
-                'message' =>
-                'File SPJ berhasil diupload ke folder Google Drive.',
+                'message' => 'File SPJ berhasil diupload ke Google Drive.',
 
                 'data' => [
+                    'file_id' => $driveFile->id,
 
-                    'file_id' =>
-                    $driveFile->id,
+                    'file_uid' => $driveFile->file_uid,
 
-                    'file_uid' =>
-                    $driveFile->file_uid,
+                    'google_file_id' => $created->id,
 
-                    'google_file_id' =>
-                    $created->id,
+                    'name' => $created->name,
 
-                    'name' =>
-                    $created->name,
+                    'original_name' => $uploadedFile->getClientOriginalName(),
 
-                    'original_name' =>
-                    $uploadedFile
-                        ->getClientOriginalName(),
+                    'mime_type' => $created->mimeType ?? $uploadedFile->getMimeType(),
 
-                    'mime_type' =>
-                    $created->mimeType
-                        ??
-                        $uploadedFile
-                        ->getMimeType(),
+                    'size' => $uploadedFile->getSize(),
 
-                    'size' =>
-                    $uploadedFile->getSize(),
+                    'url' => $url,
 
-                    'url' =>
-                    $url,
+                    'drive_account' => $account->email,
 
-                    'drive_account' =>
-                    $account->email,
+                    'drive_account_id' => $account->id,
 
-                    'drive_account_id' =>
-                    $account->id,
+                    'folder_id' => $request->folder_id,
 
-                    'folder_id' =>
-                    $request->folder_id,
+                    'source_app' => $driveFile->source_app,
 
-                    'source_app' =>
-                    $driveFile->source_app,
+                    'folder' => $driveFile->folder,
 
-                    'folder' =>
-                    $driveFile->folder,
-
-                    'reference_id' =>
-                    $driveFile->reference_id,
+                    'reference_id' => $driveFile->reference_id,
                 ],
             ]);
         } catch (\Throwable $e) {
+            return response()->json(
+                [
+                    'success' => false,
 
-            return response()->json([
-                'success' =>
-                false,
-
-                'message' =>
-                'Gagal upload SPJ ke Google Drive: '
-                    .
-                    $e->getMessage(),
-            ], 500);
+                    'message' => 'Gagal upload SPJ ke Google Drive: ' . $e->getMessage(),
+                ],
+                500,
+            );
         }
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -841,12 +471,8 @@ class ApiUploadDriveController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    private function findSPJAccountForFolder(
-        string $folderId,
-        ?int $requestedAccountId,
-        GoogleDriveService $google
-    ): ?DriveAccount {
-
+    private function findSPJAccountForFolder(string $folderId, ?int $requestedAccountId, GoogleDriveService $google): ?DriveAccount
+    {
         /*
         |--------------------------------------------------------------------------
         | 1. JIKA ACCOUNT ID DIKIRIM
@@ -854,36 +480,18 @@ class ApiUploadDriveController extends Controller
         */
 
         if ($requestedAccountId) {
-
-            $account =
-                DriveAccount::where(
-                    'id',
-                    $requestedAccountId
-                )
-                ->where(
-                    'is_active',
-                    true
-                )
-                ->first();
+            $account = DriveAccount::where('id', $requestedAccountId)->where('is_active', true)->first();
 
             if (!$account) {
                 return null;
             }
 
-            if (
-                $this->spjAccountCanWriteFolder(
-                    $account,
-                    $folderId,
-                    $google
-                )
-            ) {
-
+            if ($this->spjAccountCanWriteFolder($account, $folderId, $google)) {
                 return $account;
             }
 
             return null;
         }
-
 
         /*
         |--------------------------------------------------------------------------
@@ -891,13 +499,7 @@ class ApiUploadDriveController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $accounts =
-            DriveAccount::where(
-                'is_active',
-                true
-            )
-            ->get();
-
+        $accounts = DriveAccount::where('is_active', true)->get();
 
         /*
         |--------------------------------------------------------------------------
@@ -906,79 +508,38 @@ class ApiUploadDriveController extends Controller
         */
 
         foreach ($accounts as $account) {
-
             try {
+                $drive = new Drive($google->clientFromAccount($account));
 
-                $drive =
-                    new Drive(
-                        $google->clientFromAccount(
-                            $account
-                        )
-                    );
+                $folder = $drive->files->get($folderId, [
+                    'fields' => 'id,name,mimeType,capabilities,owners(emailAddress)',
+                ]);
 
-                $folder =
-                    $drive->files->get(
-                        $folderId,
-                        [
-                            'fields' =>
-                            'id,name,mimeType,capabilities,owners(emailAddress)',
-                        ]
-                    );
-
-                if (
-                    $folder->mimeType
-                    !==
-                    'application/vnd.google-apps.folder'
-                ) {
+                if ($folder->mimeType !== 'application/vnd.google-apps.folder') {
                     continue;
                 }
 
-                $owners =
-                    $folder->getOwners();
+                $owners = $folder->getOwners();
 
                 if (!$owners) {
                     continue;
                 }
 
                 foreach ($owners as $owner) {
+                    $ownerEmail = strtolower(trim($owner->getEmailAddress()));
 
-                    $ownerEmail =
-                        strtolower(
-                            trim(
-                                $owner->getEmailAddress()
-                            )
-                        );
+                    $accountEmail = strtolower(trim($account->email));
 
-                    $accountEmail =
-                        strtolower(
-                            trim(
-                                $account->email
-                            )
-                        );
-
-                    if (
-                        $ownerEmail
-                        ===
-                        $accountEmail
-                    ) {
-
-                        if (
-                            $this->spjAccountCanWriteFolder(
-                                $account,
-                                $folderId,
-                                $google
-                            )) {
-
+                    if ($ownerEmail === $accountEmail) {
+                        if ($this->spjAccountCanWriteFolder($account, $folderId, $google)) {
                             return $account;
                         }
                     }
                 }
             } catch (\Throwable $e) {
-
                 continue;
             }
         }
-
 
         /*
         |--------------------------------------------------------------------------
@@ -987,23 +548,13 @@ class ApiUploadDriveController extends Controller
         */
 
         foreach ($accounts as $account) {
-
-            if (
-                $this->spjAccountCanWriteFolder(
-                    $account,
-                    $folderId,
-                    $google
-                )
-            ) {
-
+            if ($this->spjAccountCanWriteFolder($account, $folderId, $google)) {
                 return $account;
             }
         }
 
-
         return null;
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -1011,31 +562,14 @@ class ApiUploadDriveController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    private function spjAccountCanWriteFolder(
-        DriveAccount $account,
-        string $folderId,
-        GoogleDriveService $google
-    ): bool {
-
+    private function spjAccountCanWriteFolder(DriveAccount $account, string $folderId, GoogleDriveService $google): bool
+    {
         try {
+            $drive = new Drive($google->clientFromAccount($account));
 
-            $drive =
-                new Drive(
-                    $google->clientFromAccount(
-                        $account
-                    )
-                );
-
-
-            $folder =
-                $drive->files->get(
-                    $folderId,
-                    [
-                        'fields' =>
-                    'id,name,mimeType,capabilities,owners(emailAddress)',
-                    ]
-                );
-
+            $folder = $drive->files->get($folderId, [
+                'fields' => 'id,name,mimeType,capabilities,owners(emailAddress)',
+            ]);
 
             /*
             |--------------------------------------------------------------------------
@@ -1043,15 +577,9 @@ class ApiUploadDriveController extends Controller
             |--------------------------------------------------------------------------
             */
 
-            if (
-                $folder->mimeType
-                !==
-                'application/vnd.google-apps.folder'
-            ) {
-
+            if ($folder->mimeType !== 'application/vnd.google-apps.folder') {
                 return false;
             }
-
 
             /*
             |--------------------------------------------------------------------------
@@ -1059,34 +587,21 @@ class ApiUploadDriveController extends Controller
             |--------------------------------------------------------------------------
             */
 
-            $capabilities =
-                $folder->getCapabilities();
+            $capabilities = $folder->getCapabilities();
 
             if (!$capabilities) {
                 return true;
             }
 
-
-            if (
-                method_exists(
-                    $capabilities,
-                    'getCanAddChildren'
-                )
-            ) {
-
-                return (bool)
-                $capabilities
-                    ->getCanAddChildren();
+            if (method_exists($capabilities, 'getCanAddChildren')) {
+                return (bool) $capabilities->getCanAddChildren();
             }
-
 
             return true;
         } catch (\Throwable $e) {
-
             return false;
         }
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -1098,74 +613,32 @@ class ApiUploadDriveController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    private function findAccountForFolder(
-        string $folderId,
-        ?int $requestedAccountId,
-        GoogleDriveService $google
-    ): ?DriveAccount {
-
+    private function findAccountForFolder(string $folderId, ?int $requestedAccountId, GoogleDriveService $google): ?DriveAccount
+    {
         if ($requestedAccountId) {
-
-            $account =
-                DriveAccount::where(
-                    'id',
-                    $requestedAccountId
-                )
-                ->where(
-                    'is_active',
-                    true
-                )
-                ->first();
+            $account = DriveAccount::where('id', $requestedAccountId)->where('is_active', true)->first();
 
             if (!$account) {
                 return null;
             }
 
-            if (
-                $this->accountCanAccessFolder(
-                    $account,
-                    $folderId,
-                    $google
-                )
-            ) {
-
+            if ($this->accountCanAccessFolder($account, $folderId, $google)) {
                 return $account;
             }
 
             return null;
         }
 
-
-        $accounts =
-            DriveAccount::where(
-                'is_active',
-                true
-            )
-            ->orderBy(
-                'storage_used',
-                'asc'
-            )
-            ->get();
-
+        $accounts = DriveAccount::where('is_active', true)->orderBy('storage_used', 'asc')->get();
 
         foreach ($accounts as $account) {
-
-            if (
-                $this->accountCanAccessFolder(
-                    $account,
-                    $folderId,
-                    $google
-                )
-            ) {
-
+            if ($this->accountCanAccessFolder($account, $folderId, $google)) {
                 return $account;
             }
         }
 
-
         return null;
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -1173,70 +646,34 @@ class ApiUploadDriveController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    private function accountCanAccessFolder(
-        DriveAccount $account,
-        string $folderId,
-        GoogleDriveService $google
-    ): bool {
-
+    private function accountCanAccessFolder(DriveAccount $account, string $folderId, GoogleDriveService $google): bool
+    {
         try {
+            $drive = new Drive($google->clientFromAccount($account));
 
-            $drive =
-                new Drive(
-                    $google->clientFromAccount(
-                        $account
-                    )
-                );
+            $folder = $drive->files->get($folderId, [
+                'fields' => 'id,name,mimeType,capabilities',
+            ]);
 
-
-            $folder =
-                $drive->files->get(
-                    $folderId,
-                    [
-                        'fields' =>
-                        'id,name,mimeType,capabilities',
-                    ]
-                );
-
-
-            if (
-                $folder->mimeType
-                !==
-                'application/vnd.google-apps.folder'
-            ) {
-
+            if ($folder->mimeType !== 'application/vnd.google-apps.folder') {
                 return false;
             }
 
-
-            $capabilities =
-                $folder->getCapabilities();
+            $capabilities = $folder->getCapabilities();
 
             if (!$capabilities) {
                 return false;
             }
 
-
-            if (
-                method_exists(
-                    $capabilities,
-                    'getCanAddChildren'
-                )
-            ) {
-
-                return (bool)
-                $capabilities
-                    ->getCanAddChildren();
+            if (method_exists($capabilities, 'getCanAddChildren')) {
+                return (bool) $capabilities->getCanAddChildren();
             }
-
 
             return true;
         } catch (\Throwable $e) {
-
             return false;
         }
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -1244,47 +681,25 @@ class ApiUploadDriveController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    private function deleteOldFileByBaseName(
-        Drive $drive,
-        string $folderId,
-        string $baseName
-    ): void {
+    private function deleteOldFileByBaseName(Drive $drive, string $folderId, string $baseName): void
+    {
+        $safeBaseName = str_replace("'", "\\'", $baseName);
 
-        $safeBaseName =
-            str_replace(
-                "'",
-                "\\'",
-                $baseName
-            );
-
-
-        $files =
-            $drive->files->listFiles([
-                'q' =>
-            "'{$folderId}' in parents
+        $files = $drive->files->listFiles([
+            'q' => "'{$folderId}' in parents
                     and trashed = false
                     and name contains '{$safeBaseName}'",
 
-                'fields' =>
-            'files(id,name)',
-            ]);
+            'fields' => 'files(id,name)',
+        ]);
 
-
-        foreach (
-            $files->files
-            as $file
-        ) {
-
+        foreach ($files->files as $file) {
             try {
-
-                $drive->files->delete(
-                    $file->id
-                );
+                $drive->files->delete($file->id);
             } catch (\Throwable $e) {
             }
         }
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -1300,70 +715,32 @@ class ApiUploadDriveController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    private function deleteSPJOldFilesByReference(
-        ?string $referenceId,
-        GoogleDriveService $google
-    ): void {
-
+    private function deleteSPJOldFilesByReference(?string $referenceId, GoogleDriveService $google): void
+    {
         if (!$referenceId) {
             return;
         }
 
+        $oldFiles = DriveFile::where('reference_id', $referenceId)->get();
 
-        $oldFiles =
-            DriveFile::where(
-                'reference_id',
-                $referenceId
-            )
-            ->get();
-
-
-        foreach (
-            $oldFiles
-            as $old
-        ) {
-
+        foreach ($oldFiles as $old) {
             try {
-
                 /*
                 |--------------------------------------------------------------------------
                 | CARI AKUN ASLI FILE
                 |--------------------------------------------------------------------------
                 */
 
-                $account =
-                    DriveAccount::where(
-                        'id',
-                        $old->drive_account_id
-                    )
-                    ->where(
-                        'is_active',
-                        true
-                    )
-                    ->first();
-
+                $account = DriveAccount::where('id', $old->drive_account_id)->where('is_active', true)->first();
 
                 if ($account) {
-
-                    $drive =
-                        new Drive(
-                            $google->clientFromAccount(
-                                $account
-                            )
-                        );
-
+                    $drive = new Drive($google->clientFromAccount($account));
 
                     try {
-
-                        $drive->files->delete(
-                            $old->google_file_id,
-                            [
-                                'supportsAllDrives' =>
-                                true,
-                            ]
-                        );
+                        $drive->files->delete($old->google_file_id, [
+                            'supportsAllDrives' => true,
+                        ]);
                     } catch (\Throwable $e) {
-
                         /*
                         |--------------------------------------------------------------------------
                         | FILE MUNGKIN SUDAH TERHAPUS
@@ -1373,7 +750,6 @@ class ApiUploadDriveController extends Controller
                 }
             } catch (\Throwable $e) {
             }
-
 
             /*
             |--------------------------------------------------------------------------
@@ -1385,7 +761,6 @@ class ApiUploadDriveController extends Controller
         }
     }
 
-
     /*
     |--------------------------------------------------------------------------
     | DELETE FILE LAMA BERDASARKAN REFERENCE
@@ -1395,41 +770,21 @@ class ApiUploadDriveController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    private function deleteOldFileByReference(
-        Drive $drive,
-        ?string $referenceId
-    ): void {
-
+    private function deleteOldFileByReference(Drive $drive, ?string $referenceId): void
+    {
         if (!$referenceId) {
             return;
         }
 
+        $oldFiles = DriveFile::where('reference_id', $referenceId)->get();
 
-        $oldFiles =
-            DriveFile::where(
-                'reference_id',
-                $referenceId
-            )
-            ->get();
-
-
-        foreach (
-            $oldFiles
-            as $old
-        ) {
-
+        foreach ($oldFiles as $old) {
             try {
-
-                $drive->files->delete(
-                    $old->google_file_id,
-                    [
-                        'supportsAllDrives' =>
-                        true,
-                    ]
-                );
+                $drive->files->delete($old->google_file_id, [
+                    'supportsAllDrives' => true,
+                ]);
             } catch (\Throwable $e) {
             }
-
 
             $old->delete();
         }
