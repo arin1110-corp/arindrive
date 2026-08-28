@@ -11,7 +11,7 @@ Route::post('/delete-drive', [ApiDeleteDriveController::class, 'delete']);
 
 Route::post('/upload', [ApiUploadController::class, 'upload']);
 
-Route::post('/upload-drive-spj', [ApiUploadController::class, 'uploadSPJ']);
+Route::post('/upload-drive-spj', [ApiUploadDriveController::class, 'uploadSPJ']);
 
 Route::post('/upload-drive', [ApiUploadDriveController::class, 'upload']);
 

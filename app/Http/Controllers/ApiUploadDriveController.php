@@ -212,20 +212,18 @@ class ApiUploadDriveController extends Controller
 
         $request->validate([
             'file' => 'required|file|max:2048000',
-            'folder_id' => 'required|string',
-            'filename' => 'required|string|max:255',
-            'drive_account_id' => 'nullable|integer',
-            'source_app' => 'nullable|string|max:100',
-            'folder' => 'nullable|string|max:150',
-            'reference_id' => 'nullable|string|max:150',
-        ]);
 
-        \Log::info('=== SPJ ENDPOINT TEST ===', [
-            'endpoint' => 'upload-drive-spj',
-            'folder_id' => $request->folder_id,
-            'filename' => $request->filename,
-            'reference_id' => $request->reference_id,
-            'drive_account_id' => $request->drive_account_id,
+            'folder_id' => 'required|string',
+
+            'filename' => 'required|string|max:255',
+
+            'drive_account_id' => 'nullable|integer',
+
+            'source_app' => 'nullable|string|max:100',
+
+            'folder' => 'nullable|string|max:150',
+
+            'reference_id' => 'nullable|string|max:150',
         ]);
 
         try {
